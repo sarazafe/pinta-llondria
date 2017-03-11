@@ -53,104 +53,85 @@ var looseSound;
 
 var app = {
 
-    // Initialize Firebase
-    firebaseConfig: {
-        apiKey: "AIzaSyBD-Qx8wtPRO-IIQjxOXk5Esx_AmCen7zM",
-        authDomain: "llondria-54d14.firebasegame.com",
-        databaseURL: "https://llondria-54d14.firebaseio.com",
-        storageBucket: "llondria-54d14.appspot.com",
-        messagingSenderId: "117223410827"
-    },
-
     init: function(){
         height  = document.documentElement.clientHeight;
         width = document.documentElement.clientWidth;
 
-        game.vigilaSensores();
-        game.startGame();
-        game.startFirebase();
+        app.vigilaSensores();
     },
 
-    startFirebase: function() {
-        firebase.initializeApp(game.firebaseConfig);
+    preload: function() {
+
+        game.stage.backgroundColor = '#FFF';
+
+        // cargar sonidos
+        app.loadAudios(game);
+
+        // imagenes
+        app.loadSprites(game);
+
+        // posiciones del dibujo
+        app.loadPuntosCometa();
+
+        // sprites del dibujo
+        spritesDibujo = [];
+
+        // inicializar el puntero que indicara el siguiente punto a colisionar
+        currentPoint = 0;
+
+        // inicializar posicion estrella
+        starPosition = 1;
+
+        // score inicial
+        score = INITIAL_SCORE;
+        firstPointHit = false;
     },
 
-    startGame: function(){
-        var game = new Phaser.Game(width, height, Phaser.AUTO, '', { preload: preload, create: create, update: update});
+    create: function() {
 
-        function preload() {
+        // fondo degradado
+        app.createBackground(game);
 
-            game.stage.backgroundColor = '#FFF';
+        // iniciar sprite jugador
+        app.createPlayerSprite(game);
 
-            // cargar sonidos
-            game.loadAudios(game);
+        // preparar los puntos del dibujo
+        app.createPointSprites(game);
 
-            // imagenes
-            game.loadSprites(game);
-            
-            // posiciones del dibujo
-            game.loadPuntosCometa();
+        // sonidos
+        app.createAudios(game);
 
-            // sprites del dibujo
-            spritesDibujo = [];
+        // on collide action
+        player.body.onCollide = new Phaser.Signal();
+        player.body.onCollide.add(app.drawLine, this);
 
-            // inicializar el puntero que indicara el siguiente punto a colisionar
-            currentPoint = 0;
+        dibujo.setAll('body.immovable', true);
 
-            // inicializar posicion estrella
-            starPosition = 1;
+        // preparar el grafico para pintar las lineas
+        graphics = game.add.graphics(0,0);
+        graphics.lineStyle(3, 0x4C0B5F, 1);
 
-            // score inicial
-            score = INITIAL_SCORE;
-            firstPointHit = false;
-        }
+        // puntuacion
+        textScore = game.add.bitmapText(10, 10, 'desyrel-pink', SCORE_LABEL + " " + score, 30);
+    },
 
-        function create() {
+    update: function() {
 
-            // fondo degradado
-            game.createBackground(game);
+       game.physics.arcade.collide(player, dibujo);
 
-            // iniciar sprite jugador
-            game.createPlayerSprite(game);
+        //  mover el jugador con el raton
+        player.body.velocity.y = (velocidadY * VELOCITY_MULTIPLIER);
+        player.body.velocity.x = (velocidadX * (-1 * VELOCITY_MULTIPLIER));
 
-            // preparar los puntos del dibujo
-            game.createPointSprites(game);
+         //  400 is the speed it will move towards the mouse
+       /* game.physics.arcade.moveToPointer(player, 400);
 
-            // sonidos
-            game.createAudios(game);
-
-            // on collide action
-            player.body.onCollide = new Phaser.Signal();
-            player.body.onCollide.add(game.drawLine, this);
-
-            dibujo.setAll('body.immovable', true);
-
-            // preparar el grafico para pintar las lineas
-            graphics = game.add.graphics(0,0);
-            graphics.lineStyle(3, 0x4C0B5F, 1);
-
-            // puntuacion
-            textScore = game.add.bitmapText(10, 10, 'desyrel-pink', SCORE_LABEL + " " + score, 30);
-        }
-
-        function update () {
-
-           game.physics.arcade.collide(player, dibujo);
-
-            //  mover el jugador con el raton
-            player.body.velocity.y = (velocidadY * VELOCITY_MULTIPLIER);
-            player.body.velocity.x = (velocidadX * (-1 * VELOCITY_MULTIPLIER));
-
-             //  400 is the speed it will move towards the mouse
-           /* game.physics.arcade.moveToPointer(player, 400);
-
-            //  if it's overlapping the mouse, don't move any more
-            if (Phaser.Rectangle.contains(player.body, game.input.x, game.input.y))
-            {
-                player.body.velocity.setTo(0, 0);
-            }*/
-        }
-    },    
+        //  if it's overlapping the mouse, don't move any more
+        if (Phaser.Rectangle.contains(player.body, game.input.x, game.input.y))
+        {
+            player.body.velocity.setTo(0, 0);
+        }*/
+    },
 
     loadAudios: function(game){
         game.load.audio('audio', ['assets/audio/background_music.wav']);
@@ -178,40 +159,40 @@ var app = {
 
     loadPuntosCometa: function(){
         puntosCometa = [
-            {'x':game.convertPointX(240), 'y':game.convertPointY(380), 'sprite':'purple_ball', 'enable':true, 'toEnable':15},     
-            {'x':game.convertPointX(235), 'y':game.convertPointY(320), 'sprite':'purple_ball', 'enable':true},  
-            {'x':game.convertPointX(230), 'y':game.convertPointY(240), 'sprite':'purple_ball', 'enable':true},  
-            {'x':game.convertPointX(225), 'y':game.convertPointY(180), 'sprite':'purple_ball', 'enable':true},  
-            {'x':game.convertPointX(220), 'y':game.convertPointY(88), 'sprite':'purple_ball', 'enable':true}, 
+            {'x':app.convertPointX(240), 'y':app.convertPointY(380), 'sprite':'purple_ball', 'enable':true, 'toEnable':15},
+            {'x':app.convertPointX(235), 'y':app.convertPointY(320), 'sprite':'purple_ball', 'enable':true},
+            {'x':app.convertPointX(230), 'y':app.convertPointY(240), 'sprite':'purple_ball', 'enable':true},
+            {'x':app.convertPointX(225), 'y':app.convertPointY(180), 'sprite':'purple_ball', 'enable':true},
+            {'x':app.convertPointX(220), 'y':app.convertPointY(88), 'sprite':'purple_ball', 'enable':true},
 
-            {'x':game.convertPointX(270), 'y':game.convertPointY(65), 'sprite':'aqua_ball', 'enable':true},  
-            {'x':game.convertPointX(310), 'y':game.convertPointY(50), 'sprite':'aqua_ball', 'enable':true},  
-            {'x':game.convertPointX(355), 'y':game.convertPointY(30), 'sprite':'aqua_ball', 'enable':true}, 
+            {'x':app.convertPointX(270), 'y':app.convertPointY(65), 'sprite':'aqua_ball', 'enable':true},
+            {'x':app.convertPointX(310), 'y':app.convertPointY(50), 'sprite':'aqua_ball', 'enable':true},
+            {'x':app.convertPointX(355), 'y':app.convertPointY(30), 'sprite':'aqua_ball', 'enable':true},
              
-            {'x':game.convertPointX(425), 'y':game.convertPointY(0), 'sprite':'aqua_ball', 'enable':true}, 
-            {'x':game.convertPointX(440), 'y':game.convertPointY(45), 'sprite':'aqua_ball', 'enable':true},  
-            {'x':game.convertPointX(460), 'y':game.convertPointY(105), 'sprite':'aqua_ball', 'enable':true},  
-            {'x':game.convertPointX(485), 'y':game.convertPointY(180), 'sprite':'aqua_ball', 'enable':true}, 
+            {'x':app.convertPointX(425), 'y':app.convertPointY(0), 'sprite':'aqua_ball', 'enable':true},
+            {'x':app.convertPointX(440), 'y':app.convertPointY(45), 'sprite':'aqua_ball', 'enable':true},
+            {'x':app.convertPointX(460), 'y':app.convertPointY(105), 'sprite':'aqua_ball', 'enable':true},
+            {'x':app.convertPointX(485), 'y':app.convertPointY(180), 'sprite':'aqua_ball', 'enable':true},
 
-            {'x':game.convertPointX(430), 'y':game.convertPointY(225), 'sprite':'purple_ball', 'enable':true},  
-            {'x':game.convertPointX(380), 'y':game.convertPointY(265), 'sprite':'purple_ball', 'enable':true},  
-            {'x':game.convertPointX(325), 'y':game.convertPointY(310), 'sprite':'purple_ball', 'enable':true},  
-            {'x':game.convertPointX(240), 'y':game.convertPointY(380), 'sprite':'purple_ball', 'enable':false},
+            {'x':app.convertPointX(430), 'y':app.convertPointY(225), 'sprite':'purple_ball', 'enable':true},
+            {'x':app.convertPointX(380), 'y':app.convertPointY(265), 'sprite':'purple_ball', 'enable':true},
+            {'x':app.convertPointX(325), 'y':app.convertPointY(310), 'sprite':'purple_ball', 'enable':true},
+            {'x':app.convertPointX(240), 'y':app.convertPointY(380), 'sprite':'purple_ball', 'enable':false},
              
-            {'x':game.convertPointX(224), 'y':game.convertPointY(415), 'sprite':'green_ball', 'enable':true},  
-            {'x':game.convertPointX(220), 'y':game.convertPointY(455), 'sprite':'green_ball', 'enable':true},  
-            {'x':game.convertPointX(225), 'y':game.convertPointY(500), 'sprite':'green_ball', 'enable':true},  
-            {'x':game.convertPointX(255), 'y':game.convertPointY(530), 'sprite':'green_ball', 'enable':true},  
-            {'x':game.convertPointX(290), 'y':game.convertPointY(515), 'sprite':'green_ball', 'enable':true},  
-            {'x':game.convertPointX(315), 'y':game.convertPointY(490), 'sprite':'green_ball', 'enable':true},  
-            {'x':game.convertPointX(350), 'y':game.convertPointY(455), 'sprite':'green_ball', 'enable':true},  
-            {'x':game.convertPointX(365), 'y':game.convertPointY(485), 'sprite':'green_ball', 'enable':true},  
-            {'x':game.convertPointX(365), 'y':game.convertPointY(510), 'sprite':'green_ball', 'enable':true},  
-            {'x':game.convertPointX(365), 'y':game.convertPointY(550), 'sprite':'green_ball', 'enable':true},  
-            {'x':game.convertPointX(380), 'y':game.convertPointY(575), 'sprite':'green_ball', 'enable':true},  
-            {'x':game.convertPointX(425), 'y':game.convertPointY(565), 'sprite':'green_ball', 'enable':true},  
-            {'x':game.convertPointX(450), 'y':game.convertPointY(565), 'sprite':'green_ball', 'enable':true},
-            {'x':game.convertPointX(475), 'y':game.convertPointY(565), 'sprite':'green_ball', 'enable':true}
+            {'x':app.convertPointX(224), 'y':app.convertPointY(415), 'sprite':'green_ball', 'enable':true},
+            {'x':app.convertPointX(220), 'y':app.convertPointY(455), 'sprite':'green_ball', 'enable':true},
+            {'x':app.convertPointX(225), 'y':app.convertPointY(500), 'sprite':'green_ball', 'enable':true},
+            {'x':app.convertPointX(255), 'y':app.convertPointY(530), 'sprite':'green_ball', 'enable':true},
+            {'x':app.convertPointX(290), 'y':app.convertPointY(515), 'sprite':'green_ball', 'enable':true},
+            {'x':app.convertPointX(315), 'y':app.convertPointY(490), 'sprite':'green_ball', 'enable':true},
+            {'x':app.convertPointX(350), 'y':app.convertPointY(455), 'sprite':'green_ball', 'enable':true},
+            {'x':app.convertPointX(365), 'y':app.convertPointY(485), 'sprite':'green_ball', 'enable':true},
+            {'x':app.convertPointX(365), 'y':app.convertPointY(510), 'sprite':'green_ball', 'enable':true},
+            {'x':app.convertPointX(365), 'y':app.convertPointY(550), 'sprite':'green_ball', 'enable':true},
+            {'x':app.convertPointX(380), 'y':app.convertPointY(575), 'sprite':'green_ball', 'enable':true},
+            {'x':app.convertPointX(425), 'y':app.convertPointY(565), 'sprite':'green_ball', 'enable':true},
+            {'x':app.convertPointX(450), 'y':app.convertPointY(565), 'sprite':'green_ball', 'enable':true},
+            {'x':app.convertPointX(475), 'y':app.convertPointY(565), 'sprite':'green_ball', 'enable':true}
         ];
     },
 
@@ -270,7 +251,7 @@ var app = {
         if(undefined === firstPoint && puntosCometa[currentPoint]['x'] === point.position.x && puntosCometa[currentPoint]['y'] === point.position.y){
             firstPoint = point.position;
 
-            game.moveStar();
+            app.moveStar();
 
             correctPoint = true;
             firstPointHit = true;
@@ -280,14 +261,14 @@ var app = {
                 //activar punto desactivado inicialmente
                 spritesDibujo[puntosCometa[currentPoint]['toEnable']].body.enable = true;
             }
-            correctPoint = game.doDrawLine(point);
+            correctPoint = app.doDrawLine(point);
         }
 
         // deshabilitar el punto y sumar puntuacion al usuario
-        game.manageScore(point, correctPoint);
+        app.manageScore(point, correctPoint);
 
         // pintar puntuacion
-        game.drawScore();
+        app.drawScore();
     },
 
     doDrawLine: function(point){
@@ -300,7 +281,7 @@ var app = {
             firstPoint = secondPoint;
             currentPoint++;
 
-            game.moveStar();
+            app.moveStar();
             return true;
         }else{
             return false;
@@ -353,8 +334,8 @@ var app = {
         }
 
         function onSuccess(datosAceleracion){
-          game.detectaAgitacion(datosAceleracion);
-          game.registraDireccion(datosAceleracion);
+          app.detectaAgitacion(datosAceleracion);
+          app.registraDireccion(datosAceleracion);
         }
 
         navigator.accelerometer.watchAcceleration(onSuccess, onError,{ frequency: 10 });
@@ -365,7 +346,7 @@ var app = {
         var agitacionY = datosAceleracion.y > 10;
 
         if (agitacionX || agitacionY){
-          setTimeout(game.recomienza, 1000);
+          setTimeout(app.recomienza, 1000);
         }
     },
 

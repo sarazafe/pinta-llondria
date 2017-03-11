@@ -32,26 +32,23 @@ var main = {
     },
 
     startGame: function(){
-        game = new Phaser.Game(height, width, Phaser.AUTO, 'game');
+        game = new Phaser.Game(width, height, Phaser.AUTO, 'game');
 
         main = {
 
             preload: function () {
-                console.log("preload main");
                 game.load.bitmapFont('desyrel-pink', 'assets/fonts/desyrel-pink.png', 'assets/fonts/desyrel-pink.xml');
             },
 
             create: function () {
-                console.log("create main");
                 game.state.add('GameMenu', GameMenu);
+                game.state.add('Game', app);
                 game.state.start('GameMenu');
             }
 
         };
 
-        console.log("add main state");
         game.state.add('Main', main);
-        console.log("start main state");
         game.state.start('Main');
     }
 

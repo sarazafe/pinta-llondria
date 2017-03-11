@@ -36,7 +36,7 @@ GameMenu = {
         // so how do we make it clickable?  We have to use .inputEnabled!
         this.startGameText.inputEnabled = true;
         // Now every time we click on it, it says "You did it!" in the console!
-        this.startGameText.events.onInputUp.add(function () { console.log('You did it!') });
+        this.startGameText.events.onInputUp.add(function () { game.state.start('Game'); });
     }
 
 };
