@@ -1,0 +1,47 @@
+{
+    "prepare_queue": {
+        "installed": [],
+        "uninstalled": []
+    },
+    "config_munge": {
+        "files": {
+            "res/xml/config.xml": {
+                "parents": {
+                    "/*": [
+                        {
+                            "xml": "<feature name=\"Accelerometer\"><param name=\"android-package\" value=\"org.apache.cordova.devicemotion.AccelListener\" /></feature>",
+                            "count": 1
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    "installed_plugins": {
+        "cordova-plugin-device-motion": {
+            "PACKAGE_NAME": "com.llondria.xuegu"
+        }
+    },
+    "dependent_plugins": {},
+    "modules": [
+        {
+            "id": "cordova-plugin-device-motion.Acceleration",
+            "file": "plugins/cordova-plugin-device-motion/www/Acceleration.js",
+            "pluginId": "cordova-plugin-device-motion",
+            "clobbers": [
+                "Acceleration"
+            ]
+        },
+        {
+            "id": "cordova-plugin-device-motion.accelerometer",
+            "file": "plugins/cordova-plugin-device-motion/www/accelerometer.js",
+            "pluginId": "cordova-plugin-device-motion",
+            "clobbers": [
+                "navigator.accelerometer"
+            ]
+        }
+    ],
+    "plugin_metadata": {
+        "cordova-plugin-device-motion": "1.2.3"
+    }
+}
