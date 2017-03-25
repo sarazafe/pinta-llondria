@@ -1,5 +1,11 @@
 // array con las posiciones de los puntos del dibujo
-var puntosCometa;
+var figurePoints;
+
+// the variable with json data about figures
+var jsonData;
+
+// the position (in array of json) of the current position
+var currentFigurePosition;
 
 // Altura y anchura originales de donde se sacaron los puntos
 var ORIGINAL_WIDTH = 500;
@@ -14,7 +20,7 @@ var dibujo;
 var star;
 
 // primer punto para dibujar las lineas entre puntos
-var firstPoint; 
+var firstPoint;
 
 // el grafico para pintar la linea entre dos puntos
 var graphics;
@@ -29,6 +35,10 @@ var starPosition;
 var score;
 var textScore;
 var firstPointHit;
+
+// the name of the properties of json with figures
+var FIGURES_JSON_FILENAME = 'assets/figures/figures.json';
+var FIGURES_LABEL_JSON = "figures";
 
 // puntuacion minima y puntuaciones a sumar o restar en funcion de si el jugador pinta bien o no cada linea
 var MIN_SCORE = 0;
@@ -51,6 +61,9 @@ var failSound;
 var winSound;
 var looseSound;
 
+// phaser game
+var game;
+
 var app = {
 
     // Initialize Firebase
@@ -62,8 +75,8 @@ var app = {
         messagingSenderId: "117223410827"
     },
 
-    init: function(){
-        height  = document.documentElement.clientHeight;
+    init: function () {
+        height = document.documentElement.clientHeight;
         width = document.documentElement.clientWidth;
 
         app.vigilaSensores();
@@ -71,14 +84,20 @@ var app = {
         app.startFirebase();
     },
 
-    startFirebase: function() {
+    startFirebase: function () {
         firebase.initializeApp(app.firebaseConfig);
     },
 
-    startGame: function(){
-        var game = new Phaser.Game(width, height, Phaser.AUTO, '', { preload: preload, create: create, update: update});
+    startGame: function () {
+        game = new Phaser.Game(width, height, Phaser.AUTO, '', {preload: preload, create: create, update: update});
 
         function preload() {
+
+            // load figures from json
+            game.load.text(FIGURES_LABEL_JSON, FIGURES_JSON_FILENAME);
+
+            // initialize position of current figure in json
+            currentFigurePosition = 0;
 
             game.stage.backgroundColor = '#FFF';
 
@@ -90,9 +109,6 @@ var app = {
 
             // fuente para la puntuacion
             game.load.bitmapFont('desyrel-pink', 'assets/fonts/desyrel-pink.png', 'assets/fonts/desyrel-pink.xml');
-            
-            // posiciones del dibujo
-            app.loadPuntosCometa();
 
             // sprites del dibujo
             spritesDibujo = [];
@@ -109,53 +125,61 @@ var app = {
         }
 
         function create() {
-
-            // fondo degradado
-            app.createBackground(game);
-
-            // iniciar sprite jugador
-            app.createPlayerSprite(game);
-
-            // preparar los puntos del dibujo
-            app.createPointSprites(game);
-
-            // sonidos
-            app.createAudios(game);
-
-            // on collide action
-            player.body.onCollide = new Phaser.Signal();
-            player.body.onCollide.add(app.drawLine, this);
-
-            dibujo.setAll('body.immovable', true);
-
-            // preparar el grafico para pintar las lineas
-            graphics = game.add.graphics(0,0);
-            graphics.lineStyle(3, 0x4C0B5F, 1);
-
-            // puntuacion
-            textScore = game.add.bitmapText(10, 10, 'desyrel-pink', SCORE_LABEL + " " + score, 30);
+            app.createGame();
         }
 
-        function update () {
+        function update() {
 
-           game.physics.arcade.collide(player, dibujo);
+            game.physics.arcade.collide(player, dibujo);
 
             //  mover el jugador con el raton
             player.body.velocity.y = (velocidadY * VELOCITY_MULTIPLIER);
             player.body.velocity.x = (velocidadX * (-1 * VELOCITY_MULTIPLIER));
 
-             //  400 is the speed it will move towards the mouse
-           /* game.physics.arcade.moveToPointer(player, 400);
-
-            //  if it's overlapping the mouse, don't move any more
-            if (Phaser.Rectangle.contains(player.body, game.input.x, game.input.y))
-            {
-                player.body.velocity.setTo(0, 0);
-            }*/
+            //  400 is the speed it will move towards the mouse
+            /* game.physics.arcade.moveToPointer(player, 400);
+             //  if it's overlapping the mouse, don't move any more
+             if (Phaser.Rectangle.contains(player.body, game.input.x, game.input.y))
+             {
+             player.body.velocity.setTo(0, 0);
+             }*/
         }
-    },    
+    },
 
-    loadAudios: function(game){
+    createGame: function(){
+        // get data from json
+        jsonData = JSON.parse(game.cache.getText(FIGURES_LABEL_JSON));
+
+        // posiciones del dibujo
+        app.loadFigurePoints();
+
+        // fondo degradado
+        app.createBackground(game);
+
+        // iniciar sprite jugador
+        app.createPlayerSprite(game);
+
+        // preparar los puntos del dibujo
+        app.createPointSprites(game);
+
+        // sonidos
+        app.createAudios(game);
+
+        // on collide action
+        player.body.onCollide = new Phaser.Signal();
+        player.body.onCollide.add(app.drawLine, this);
+
+        dibujo.setAll('body.immovable', true);
+
+        // preparar el grafico para pintar las lineas
+        graphics = game.add.graphics(0, 0);
+        graphics.lineStyle(3, 0x4C0B5F, 1);
+
+        // puntuacion
+        textScore = game.add.bitmapText(10, 10, 'desyrel-pink', SCORE_LABEL + " " + score, 30);
+    },
+
+    loadAudios: function (game) {
         game.load.audio('audio', ['assets/audio/background_music.wav']);
         game.load.audio('okSound', ['assets/audio/hit.mp3']);
         game.load.audio('failSound', ['assets/audio/fail.wav']);
@@ -163,7 +187,7 @@ var app = {
         game.load.audio('looseSound', ['assets/audio/loosing.wav']);
     },
 
-    loadSprites: function(game){
+    loadSprites: function (game) {
         game.load.image('player', 'assets/sprites/player.png');
         game.load.atlas('star', 'assets/sprites/star.png', 'assets/sprites/star.json');
         game.load.image('aqua_ball', 'assets/sprites/aqua_ball.png');
@@ -171,92 +195,71 @@ var app = {
         game.load.image('green_ball', 'assets/sprites/green_ball.png');
     },
 
-    convertPointX: function(originalX){
-        return (originalX*width/ORIGINAL_WIDTH) - 80;
+    convertPointX: function (originalX) {
+        return (originalX * width / ORIGINAL_WIDTH) - 80;
     },
 
-    convertPointY: function(originalY){
-        return originalY*height/ORIGINAL_HEIGTH;
+    convertPointY: function (originalY) {
+        return originalY * height / ORIGINAL_HEIGTH;
     },
 
-    loadPuntosCometa: function(){
-        puntosCometa = [
-            {'x':app.convertPointX(240), 'y':app.convertPointY(380), 'sprite':'purple_ball', 'enable':true, 'toEnable':15},     
-            {'x':app.convertPointX(235), 'y':app.convertPointY(320), 'sprite':'purple_ball', 'enable':true},  
-            {'x':app.convertPointX(230), 'y':app.convertPointY(240), 'sprite':'purple_ball', 'enable':true},  
-            {'x':app.convertPointX(225), 'y':app.convertPointY(180), 'sprite':'purple_ball', 'enable':true},  
-            {'x':app.convertPointX(220), 'y':app.convertPointY(88), 'sprite':'purple_ball', 'enable':true}, 
-
-            {'x':app.convertPointX(270), 'y':app.convertPointY(65), 'sprite':'aqua_ball', 'enable':true},  
-            {'x':app.convertPointX(310), 'y':app.convertPointY(50), 'sprite':'aqua_ball', 'enable':true},  
-            {'x':app.convertPointX(355), 'y':app.convertPointY(30), 'sprite':'aqua_ball', 'enable':true}, 
-             
-            {'x':app.convertPointX(425), 'y':app.convertPointY(0), 'sprite':'aqua_ball', 'enable':true}, 
-            {'x':app.convertPointX(440), 'y':app.convertPointY(45), 'sprite':'aqua_ball', 'enable':true},  
-            {'x':app.convertPointX(460), 'y':app.convertPointY(105), 'sprite':'aqua_ball', 'enable':true},  
-            {'x':app.convertPointX(485), 'y':app.convertPointY(180), 'sprite':'aqua_ball', 'enable':true}, 
-
-            {'x':app.convertPointX(430), 'y':app.convertPointY(225), 'sprite':'purple_ball', 'enable':true},  
-            {'x':app.convertPointX(380), 'y':app.convertPointY(265), 'sprite':'purple_ball', 'enable':true},  
-            {'x':app.convertPointX(325), 'y':app.convertPointY(310), 'sprite':'purple_ball', 'enable':true},  
-            {'x':app.convertPointX(240), 'y':app.convertPointY(380), 'sprite':'purple_ball', 'enable':false},
-             
-            {'x':app.convertPointX(224), 'y':app.convertPointY(415), 'sprite':'green_ball', 'enable':true},  
-            {'x':app.convertPointX(220), 'y':app.convertPointY(455), 'sprite':'green_ball', 'enable':true},  
-            {'x':app.convertPointX(225), 'y':app.convertPointY(500), 'sprite':'green_ball', 'enable':true},  
-            {'x':app.convertPointX(255), 'y':app.convertPointY(530), 'sprite':'green_ball', 'enable':true},  
-            {'x':app.convertPointX(290), 'y':app.convertPointY(515), 'sprite':'green_ball', 'enable':true},  
-            {'x':app.convertPointX(315), 'y':app.convertPointY(490), 'sprite':'green_ball', 'enable':true},  
-            {'x':app.convertPointX(350), 'y':app.convertPointY(455), 'sprite':'green_ball', 'enable':true},  
-            {'x':app.convertPointX(365), 'y':app.convertPointY(485), 'sprite':'green_ball', 'enable':true},  
-            {'x':app.convertPointX(365), 'y':app.convertPointY(510), 'sprite':'green_ball', 'enable':true},  
-            {'x':app.convertPointX(365), 'y':app.convertPointY(550), 'sprite':'green_ball', 'enable':true},  
-            {'x':app.convertPointX(380), 'y':app.convertPointY(575), 'sprite':'green_ball', 'enable':true},  
-            {'x':app.convertPointX(425), 'y':app.convertPointY(565), 'sprite':'green_ball', 'enable':true},  
-            {'x':app.convertPointX(450), 'y':app.convertPointY(565), 'sprite':'green_ball', 'enable':true},
-            {'x':app.convertPointX(475), 'y':app.convertPointY(565), 'sprite':'green_ball', 'enable':true}
-        ];
+    /**
+     * It loads the points of the current figure from the json
+     */
+    loadFigurePoints: function () {
+        var points = jsonData[FIGURES_LABEL_JSON][currentFigurePosition].points;
+        figurePoints = [];
+        var point
+        for (point in points) {
+            figurePoints.push({
+                "x": app.convertPointX(points[point]["x"]),
+                "y": app.convertPointY(points[point]["y"]),
+                "sprite": points[point]["sprite"],
+                "enable": points[point]["enable"],
+                "toEnable": points[point]["toEnable"]
+            });
+        }
     },
 
-    createBackground: function(game){
+    createBackground: function (game) {
         var bitMap = game.add.bitmapData(game.width, game.height);
-        var grd=bitMap.context.createLinearGradient(0,0,0,500);
-        grd.addColorStop(0,"#9F81F7");
-        grd.addColorStop(1,"#E3CEF6");
-        bitMap.context.fillStyle=grd;
-        bitMap.context.fillRect(0,0,game.width, game.height);
-        var gradient = game.add.sprite(0,0, bitMap);
+        var grd = bitMap.context.createLinearGradient(0, 0, 0, 500);
+        grd.addColorStop(0, "#9F81F7");
+        grd.addColorStop(1, "#E3CEF6");
+        bitMap.context.fillStyle = grd;
+        bitMap.context.fillRect(0, 0, game.width, game.height);
+        var gradient = game.add.sprite(0, 0, bitMap);
         gradient.alpha = 0;
-        game.add.tween(gradient).to({ alpha: 1 }, 2000).start();
+        game.add.tween(gradient).to({alpha: 1}, 2000).start();
     },
 
-    createPlayerSprite: function(game){
-        player = game.add.sprite(0, height/2, 'player');
+    createPlayerSprite: function (game) {
+        player = game.add.sprite(0, height / 2, 'player');
         game.physics.arcade.enable(player);
         player.body.collideWorldBounds = true;
         game.physics.enable(player, Phaser.Physics.ARCADE);
     },
 
-    createPointSprites: function(game){        
+    createPointSprites: function (game) {
         dibujo = game.add.physicsGroup();
         var point
-        for(point in puntosCometa){
-            var sprite = dibujo.create(puntosCometa[point]['x'], puntosCometa[point]['y'], puntosCometa[point]['sprite']);
+        for (point in figurePoints) {
+            var sprite = dibujo.create(figurePoints[point]['x'], figurePoints[point]['y'], figurePoints[point]['sprite']);
             sprite.anchor.setTo(0.5, 0.5);
             game.physics.arcade.enable(sprite);
-            sprite.body.enable = puntosCometa[point]['enable'];
+            sprite.body.enable = figurePoints[point]['enable'];
             sprite.body.collideWorldBounds = true;
             spritesDibujo[point] = sprite;
         }
 
-        star = game.add.sprite(puntosCometa[0]['x'], puntosCometa[0]['y'], 'star');
+        star = game.add.sprite(figurePoints[0]['x'], figurePoints[0]['y'], 'star');
         star.animations.add('walk');
         star.animations.play('walk', 10, true);
         star.scale.setTo(0.25, 0.25);
         star.anchor.setTo(0.5, 0.55);
     },
 
-    createAudios: function(game){
+    createAudios: function (game) {
         music = game.add.audio('audio', 0.1, true);
         music.play();
         okSound = game.add.audio('okSound');
@@ -265,23 +268,23 @@ var app = {
         looseSound = game.add.audio('looseSound');
     },
 
-    drawLine: function (player, point){
+    drawLine: function (player, point) {
 
         var correctPoint = false;
 
         // pintar la linea entre dos puntos, cuando haya colisionado con dos puntos
-        if(undefined === firstPoint && puntosCometa[currentPoint]['x'] === point.position.x && puntosCometa[currentPoint]['y'] === point.position.y){
+        if (undefined === firstPoint && figurePoints[currentPoint]['x'] === point.position.x && figurePoints[currentPoint]['y'] === point.position.y) {
             firstPoint = point.position;
 
             app.moveStar();
 
             correctPoint = true;
             firstPointHit = true;
-        }else if(undefined != firstPoint){
+        } else if (undefined != firstPoint) {
 
-            if(undefined != puntosCometa[currentPoint]['toEnable']){
+            if (undefined != figurePoints[currentPoint]['toEnable']) {
                 //activar punto desactivado inicialmente
-                spritesDibujo[puntosCometa[currentPoint]['toEnable']].body.enable = true;
+                spritesDibujo[figurePoints[currentPoint]['toEnable']].body.enable = true;
             }
             correctPoint = app.doDrawLine(point);
         }
@@ -293,11 +296,11 @@ var app = {
         app.drawScore();
     },
 
-    doDrawLine: function(point){
+    doDrawLine: function (point) {
         var secondPoint = point.position;
         // si los dos puntos son los correspondientes en la lista de puntos del dibujo, se puede dibujar la linea
-        if(spritesDibujo[currentPoint].x === firstPoint.x && spritesDibujo[currentPoint].y === firstPoint.y 
-            && spritesDibujo[currentPoint+1].x === secondPoint.x && spritesDibujo[currentPoint+1].y === secondPoint.y){
+        if (spritesDibujo[currentPoint].x === firstPoint.x && spritesDibujo[currentPoint].y === firstPoint.y
+            && spritesDibujo[currentPoint + 1].x === secondPoint.x && spritesDibujo[currentPoint + 1].y === secondPoint.y) {
             graphics.moveTo(firstPoint.x, firstPoint.y);
             graphics.lineTo(secondPoint.x, secondPoint.y);
             firstPoint = secondPoint;
@@ -305,18 +308,18 @@ var app = {
 
             app.moveStar();
             return true;
-        }else{
+        } else {
             return false;
         }
     },
 
-    manageScore: function(point, correctPoint){
-        if(correctPoint){
-            point.body.enable = false;  
-            score += SCORE_TO_ADD;  
+    manageScore: function (point, correctPoint) {
+        if (correctPoint) {
+            point.body.enable = false;
+            score += SCORE_TO_ADD;
             // sonar acierto
-            okSound.play();  
-        }else if(firstPointHit){
+            okSound.play();
+        } else if (firstPointHit) {
             console.log("Quitando puntos " + point + " " + correctPoint);
             score -= SCORE_TO_DECREMENT;
             // sonar fallo
@@ -324,67 +327,69 @@ var app = {
         }
     },
 
-    drawScore: function(){
+    drawScore: function () {
         // Pintar puntuacion
-        if(score < MIN_SCORE){// si perdio, se notifica y se deshabilitan todos los puntos restantes
+        if (score < MIN_SCORE) {// si perdio, se notifica y se deshabilitan todos los puntos restantes
             textScore.setText(LOOSE_MESSAGE);
             music.stop();
             looseSound.play();
-            for(var i in spritesDibujo){
+            for (var i in spritesDibujo) {
                 spritesDibujo[i].body.enable = false;
             }
-        }else if(currentPoint === (puntosCometa.length-1)){//termino el juego
+        } else if (currentPoint === (figurePoints.length - 1)) {//termino el juego
             textScore.setText(WIN_MESSAGE + "\n" + SCORE_LABEL + " " + score);
             music.stop();
             winSound.play();
-        }else{
+            currentFigurePosition++;
+            app.createGame();
+        } else {
             textScore.setText(SCORE_LABEL + " " + score);
         }
     },
 
-    moveStar: function(){
-        if(starPosition < (spritesDibujo.length)){
-            star.x = puntosCometa[starPosition]['x'];
-            star.y = puntosCometa[starPosition]['y'];
+    moveStar: function () {
+        if (starPosition < (spritesDibujo.length)) {
+            star.x = figurePoints[starPosition]['x'];
+            star.y = figurePoints[starPosition]['y'];
             starPosition++;
         }
     },
 
-    vigilaSensores: function(){    
+    vigilaSensores: function () {
         function onError() {
             console.log('onError!');
         }
 
-        function onSuccess(datosAceleracion){
-          app.detectaAgitacion(datosAceleracion);
-          app.registraDireccion(datosAceleracion);
+        function onSuccess(datosAceleracion) {
+            app.detectaAgitacion(datosAceleracion);
+            app.registraDireccion(datosAceleracion);
         }
 
-        navigator.accelerometer.watchAcceleration(onSuccess, onError,{ frequency: 10 });
+        navigator.accelerometer.watchAcceleration(onSuccess, onError, {frequency: 10});
     },
 
-    detectaAgitacion: function(datosAceleracion){
+    detectaAgitacion: function (datosAceleracion) {
         var agitacionX = datosAceleracion.x > 10;
         var agitacionY = datosAceleracion.y > 10;
 
-        if (agitacionX || agitacionY){
-          setTimeout(app.recomienza, 1000);
+        if (agitacionX || agitacionY) {
+            setTimeout(app.recomienza, 1000);
         }
     },
 
-    recomienza: function(){
+    recomienza: function () {
         document.location.reload(true);
     },
 
-    registraDireccion: function(datosAceleracion){
+    registraDireccion: function (datosAceleracion) {
         velocidadX = datosAceleracion.x;
-        velocidadY = datosAceleracion.y ;
+        velocidadY = datosAceleracion.y;
     }
 
 };
 
 if ('addEventListener' in document) {
-    document.addEventListener('deviceready', function() {
+    document.addEventListener('deviceready', function () {
         app.init();
     }, false);
 }
